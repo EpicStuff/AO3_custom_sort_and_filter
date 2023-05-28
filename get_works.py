@@ -34,12 +34,13 @@ def update_url_to_next_page(args):
 		else:
 			args['url'] += "?page=2"
 def write_ids_to_csv(args, ids):
-	with open(args['out_file'] + ".csv", 'a', newline='', encoding='utf8') as csvfile:
+	with open(args['file_out'] + ".csv", 'a', newline='', encoding='utf8') as csvfile:
 		writer = csv.writer(csvfile, delimiter=',')
 		for id in ids:
-			if not not_finished(args): break
+			if is_done(args): break
 			writer.writerow([val for key, val in id.items()])
 			args['num_gotten'] += 1
+	args['pages_gotten'] += 1
 def get_ids(args, seen_ids):
 	# make the request. if we 429, try again later
 	headers = {'user-agent': args['header']}
@@ -63,19 +64,19 @@ def get_ids(args, seen_ids):
 		# if args['oneshots(yes/no/only)'] == 'no' and work.find('dd', class_="chapters").text == '1/1': continue
 		# if args['oneshots(yes/no/only)'] == 'only' and work.find('dd', class_="chapters").text != '1/1': continue
 		# if args['to_get']['id'](work) in seen_ids: continue
-		ids.append({key: func(work) for key, func in args['to_get'].items()})
-		seen_ids.add(ids[-1]['id'])
+		work = {key: func(work) for key, func in args['to_get'].items()}
+		if work['id'] not in seen_ids:
+			ids.append(work)
+			seen_ids.add(ids[-1]['id'])
 	return ids
-def not_finished(args):
-	if (args['is_page_empty']):
-		return False
-	if (args['num_to_get'] == -1):
+def is_done(args):
+	if args['is_page_empty']:
 		return True
-	else:
-		if (args['num_gotten'] < args['num_to_get']):
-			return True
-		else:
-			return False
+	if args['num_to_get'] > 0 and args['num_gotten'] >= args['num_to_get']:
+		return True
+	if args['pages_to_get'] > 0 and args['pages_gotten'] >= args['pages_to_get']:
+		return True
+	return False
 def load_existing_ids(args, ids=set()):
 	if (os.path.exists(args['file_name'] + '.csv')) and os.stat(args['file_name'] + '.csv').st_size:
 		with open(args['file_name'] + ".csv", 'r', encoding='utf8') as f:
@@ -88,35 +89,55 @@ def load_existing_ids(args, ids=set()):
 			writer = csv.writer(f, delimiter=',')
 			writer.writerow(list(args['to_get']))
 	return ids
+def create_file(file, to_write):
+	print("no existing file; creating new file...\n")
+	with open(file + '.csv', 'w', newline='', encoding='utf8') as f:
+		writer = csv.writer(f, delimiter=',')
+		writer.writerow(to_write)
 def main():
 	args = {
 		'url': None,
 		'delay': 5.0,
 		'num_to_get': -1,
-		'in_file': 'work_ids',
-		'out_file': 'work_ids',
+		'pages_to_get': -1,
+		'file_in': 'work_ids',
+		'file_out': 'work_ids',
 		'header': '',
 		# 'oneshots(yes/no/only)': 'yes',
 		'num_gotten': 0,
+		'pages_gotten': 0,
 		'is_page_empty': False,
 		'to_get': {
 			'id': lambda w: w.find('h4', class_="heading").find('a').get('href').split('/')[-1],
 			'body': lambda w: str(w).replace('\n', '').replace('\r', '').replace('\t', '').replace('href="/', 'href="https://archiveofourown.org/')
 		}
 	}
-	args = get_args(args, 3)
+	# get user args
+	args = get_args(args, 4)
+	# load existing ids
 	try:
-		seen = {*load_csv(args['in_file'], 0, True, list(args['to_get']))}
+		seen = {*load_csv(args['file_in'], 0)}
 	except FileNotFoundError as e:
 		print(e)
 		seen = set()
+		if args['file_in'] == args['file_out']:
+			create_file(args['file_out'], list(args['to_get']))
+	# create file if necessary
+	if args['file_in'] != args['file_out']:
+		create_file(args['file_out'], list(args['to_get']))
+
 	with Progress() as progress:
-		progress.add_task('processing: ', total=args['num_to_get'] // 20 + 1)
-		while not_finished(args):
+		if args['num_to_get'] > 0:
+			progress.add_task('processing: ', total=args['num_to_get'] // 20 + 1)
+		elif args['pages_to_get'] > 0:
+			progress.add_task('processing: ', total=args['pages_to_get'])
+		else:
+			progress.add_task('processing: ')
+		while not is_done(args):
 			write_ids_to_csv(args, get_ids(args, seen))
 			update_url_to_next_page(args)
-			time.sleep(args['delay'])
 			progress.update(0, advance=1)
+			time.sleep(args['delay'])
 
 
 if __name__ == "__main__":

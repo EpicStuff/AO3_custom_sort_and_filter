@@ -35,7 +35,7 @@ def get_args(default_args, to_skip):
 			return args
 		except KeyboardInterrupt:
 			print('\nrestarting...\n')
-def load_csv(file, col=-1, create=False, to_write=[]):
+def load_csv(file, col=-1):
 	import os, csv
 	from rich.progress import track
 	file = file + '.csv'; lines = []
@@ -53,9 +53,5 @@ def load_csv(file, col=-1, create=False, to_write=[]):
 					lines.append(row)
 				else:
 					lines.append(row[col])
-	elif create:
-		print("no existing file; creating new file...\n")
-		with open(file, 'w', newline='', encoding='utf8') as f:
-			writer = csv.writer(f, delimiter=',')
-			writer.writerow(to_write)
-	return lines
+		return lines
+	return FileNotFoundError(f'file not found: {file}')

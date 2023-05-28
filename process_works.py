@@ -7,16 +7,17 @@ from stuff import *
 def main():
 	args = {
 		'in_file': 'work_ids',
-		'out_file': 'outputs/works_sorted',
 		'sort_by': 'ratio',
-		'template': 'ao3_template',
-		'works_per_page': 20,
-		'works_to_skip': 'bookmarks',
 		'min':
 		{
 			'hits': 100,
 			'words': 2000,
 		},
+		'out_file': None,
+		'works_to_skip': None,
+		'out_folder': 'outputs/',
+		'works_per_page': 20,
+		'template': 'ao3_template',
 		'to_get':
 		{
 			'words': lambda soup: int(soup.find('dd', class_="words").text.replace(',', '')),
@@ -30,16 +31,21 @@ def main():
 			'kudos': lambda work: work[2]['kudos'],
 		},
 	}
-	get_args(args, 1)
+	# load args
+	args = get_args(args, 3)
+	# if no out_file specified, use in_file
+	if not args['out_file']:
+		args['out_file'] = args['in_file']
 
 	# load works
 	works = load_csv(args['in_file'])
 	# load works to skip and skip
-	try:
-		works_to_skip = {*load_csv(args['works_to_skip'], 0)}
-		works = [work for work in works if not work[0] in works_to_skip]
-	except FileNotFoundError as e:
-		print('skipping skipping:', e)
+	if args['works_to_skip']:
+		try:
+			works_to_skip = {*load_csv(args['works_to_skip'], 0)}
+			works = [work for work in works if not work[0] in works_to_skip]
+		except FileNotFoundError as e:
+			print('skipping skipping:', e)
 
 	# extract data
 	for work in track(works, 'processing works:', len(works)):
@@ -48,9 +54,9 @@ def main():
 			work[2][key] = func(BeautifulSoup(work[1], 'lxml'))
 
 	# skip works with less that min_hits
-	if args['min_hits'] > 0:
+	if args['min']['hits'] > 0:
 		works = [work for work in works if work[2]['hits'] >= args['min_hits']]
-	if args['min_words'] > 0:
+	if args['min']['words'] > 0:
 		works = [work for work in works if work[2]['words'] >= args['min_words']]
 
 	# sort works
@@ -59,6 +65,9 @@ def main():
 	# split works into pages
 	works = [works[i:i + args['works_per_page']] for i in range(0, len(works), args['works_per_page'])]
 
+	if args['out_folder']:
+		os.makedirs(args["out_file"], exist_ok=True)
+		args['out_file'] = args['out_folder'] + args['out_file']
 	for current_page, page in track(enumerate(works), 'processing files:', len(works)):
 		# load template
 		with open(args['template'] + '.html', 'r', encoding='utf8') as f:
@@ -88,9 +97,6 @@ def main():
 			soup.find('ol', class_='work index group').append(BeautifulSoup(work[1], 'lxml'))
 
 		# save page
-		try:
-			os.makedirs(os.path.dirname(args["out_file"]), exist_ok=True)
-		except FileNotFoundError as e: print(e)
 		with open(f'{args["out_file"]}_{str(current_page + 1)}.html', 'w', encoding='utf8') as f:
 			f.write(soup.prettify())
 
