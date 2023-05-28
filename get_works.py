@@ -4,6 +4,7 @@
 from bs4 import BeautifulSoup
 import time, requests, csv, os
 from rich.progress import track, Progress
+from stuff import *
 
 
 def update_url_to_next_page(args):
@@ -33,7 +34,7 @@ def update_url_to_next_page(args):
 		else:
 			args['url'] += "?page=2"
 def write_ids_to_csv(args, ids):
-	with open(args['file_name'] + ".csv", 'a', newline='', encoding='utf8') as csvfile:
+	with open(args['file'] + ".csv", 'a', newline='', encoding='utf8') as csvfile:
 		writer = csv.writer(csvfile, delimiter=',')
 		for id in ids:
 			if not not_finished(args): break
@@ -51,7 +52,7 @@ def get_ids(args, seen_ids):
 
 	soup = BeautifulSoup(req.text, "lxml")
 
-	works = soup.select("li.work.blurb.group")
+	works = soup.select("li.blurb.group")
 	# see if we've gone too far and run out of fic:
 	if (len(works) == 0):
 		args['is_page_empty'] = True
@@ -59,9 +60,9 @@ def get_ids(args, seen_ids):
 	# process list for new fic ids
 	ids = []
 	for work in works:
-		if args['oneshots(yes/no/only)'] == 'no' and work.find('dd', class_="chapters").text == '1/1': continue
-		if args['oneshots(yes/no/only)'] == 'only' and work.find('dd', class_="chapters").text != '1/1': continue
-		if args['to_get']['id'](work) in seen_ids: continue
+		# if args['oneshots(yes/no/only)'] == 'no' and work.find('dd', class_="chapters").text == '1/1': continue
+		# if args['oneshots(yes/no/only)'] == 'only' and work.find('dd', class_="chapters").text != '1/1': continue
+		# if args['to_get']['id'](work) in seen_ids: continue
 		ids.append({key: func(work) for key, func in args['to_get'].items()})
 		seen_ids.add(ids[-1]['id'])
 	return ids
@@ -87,44 +88,27 @@ def load_existing_ids(args, ids=set()):
 			writer = csv.writer(f, delimiter=',')
 			writer.writerow(list(args['to_get']))
 	return ids
-def get_args(default_args, to_skip):
-	# loop though all keys in args expect for last 2
-	for key in list(default_args)[:to_skip * -1]:
-		response = input(key + '=')
-		if response:
-			if default_args[key].__class__ is int:
-				try: default_args[key] = int(response)
-				except ValueError: print("error: should be int")
-			elif default_args[key].__class__ is float:
-				try: default_args[key] = float(response)
-				except ValueError: print("error: should be float")
-			elif key == 'oneshots(include/exclude/exclusive)':
-				if response in ('inc', '1', 'include', 'yes', 'y'): default_args[key] = 'yes'
-				elif response == ('2', 'exclude', 'no', 'n'): default_args[key] = 'no'
-				elif response == ('3', 'exclusive', 'only', 'o'): default_args[key] = 'only'
-				else: print("error: should be yes/no/only")
-			else:
-				default_args[key] = response
-	return default_args
 def main():
 	args = {
 		'url': None,
 		'delay': 5.0,
 		'num_to_get': -1,
-		'file_name': 'work_ids',
+		'file': 'work_ids',
 		'header': '',
-		'oneshots(yes/no/only)': 'yes',
+		# 'oneshots(yes/no/only)': 'yes',
 		'num_gotten': 0,
 		'is_page_empty': False,
 		'to_get': {
-			'id': lambda w: w.get('id')[5:],
-			'kudos': lambda w: w.find('dd', class_="kudos").text,
-			'hits': lambda w: w.find('dd', class_="hits").text,
+			'id': lambda w: w.find('h4', class_="heading").find('a').get('href').split('/')[-1],
 			'body': lambda w: str(w).replace('\n', '').replace('\r', '').replace('\t', '').replace('href="/', 'href="https://archiveofourown.org/')
 		}
 	}
 	get_args(args, 3)
-	seen = load_existing_ids(args)
+	try:
+		seen = {*load_csv(args['file'], 0, True, list(args['to_get']))}
+	except FileNotFoundError as e:
+		print(e)
+		seen = set()
 	with Progress() as progress:
 		progress.add_task('processing: ', total=args['num_to_get'] // 20 + 1)
 		while not_finished(args):

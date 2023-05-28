@@ -1,56 +1,55 @@
-import csv, os
+import os
 from bs4 import BeautifulSoup
 from rich.progress import track
+from stuff import *
 
-def get_args(default_args):
-	# loop though all keys in args expect for last 2
-	for key in list(default_args):
-		response = input(key + '=')
-		if response:
-			if default_args[key].__class__ is int:
-				try: default_args[key] = int(response)
-				except ValueError: print("error: should be int")
-			# elif args[key].__class__ is float:
-			# 	try: args[key] = float(response)
-			# 	except ValueError: print("error: should be float")
-			else:
-				default_args[key] = response
-	return default_args
+
 def main():
-	args = {'in_file': 'work_ids', 'out_file': 'outputs/works_sorted', 'sort_by': 'ratio', 'template': 'ao3_template', 'works_per_page': 20, 'works_to_skip': 'bookmarks', 'min_hits': 100}
-	get_args(args)
+	args = {
+		'in_file': 'work_ids',
+		'out_file': 'outputs/works_sorted',
+		'sort_by': 'ratio',
+		'template': 'ao3_template',
+		'works_per_page': 20,
+		'works_to_skip': 'bookmarks',
+		'min_hits': 100,
+		'to_get':
+		{
+			'words': lambda soup: int(soup.find('dd', class_="words").text.replace(',', '')),
+			'kudos': lambda soup: int(soup.find('dd', class_="kudos").text),
+			'hits': lambda soup: int(soup.find('dd', class_="hits").text),
+		}
+	}
+	get_args(args, 1)
 
 	# load works
-	works = []
-	with open(args['in_file'] + '.csv', 'r', newline='', encoding='utf8') as f:
-		reader = csv.reader(f, delimiter=',')
-		csv_len = len(next(reader))
-		for row in reader:
-			if len(row) > csv_len:
-				row = row[:csv_len - 1] + [','.join(row[csv_len - 1:])]
-			works.append(row)
-
+	works = load_csv(args['in_file'])
 	# load works to skip and skip
 	try:
-		with open(args['works_to_skip'] + '.csv', 'r', newline='', encoding='utf8') as f:
-			reader = csv.reader(f, delimiter=',')
-			work_to_skip = [row[0].split('/')[-1] for row in reader]
-		# remove all works in works to skip from works
-		works = [work for work in works if not work[0] in work_to_skip]
-	except Exception as e: print('skipping skipping:', e)
+		works_to_skip = {*load_csv(args['works_to_skip'], 0)}
+		works = [work for work in works if not work[0] in works_to_skip]
+	except FileNotFoundError as e:
+		print('skipping skipping:', e)
+
+	# extract data
+	for work in track(works, 'processing works:', len(works)):
+		work.append({})
+		for key, func in args['to_get'].items():
+			work[2][key] = func(BeautifulSoup(work[1], 'lxml'))
+
 	# skip works with less that min_hits
 	if args['min_hits'] > 0:
-		works = [work for work in works if int(work[2]) >= args['min_hits']]
+		works = [work for work in works if work[2]['hits'] >= args['min_hits']]
 
 	if args['sort_by'] == 'ratio':
-		works.sort(key=lambda x: float(x[1]) / float(x[2]), reverse=True)
+		works.sort(key=lambda work:  work[2]['kudos'] / work[2]['hits'], reverse=True)
 	elif args['sort_by'] == 'ratio modified':
-		works.sort(key=lambda x: (float(x[1]) + 0) / (float(x[2]) + 10), reverse=True)
+		works.sort(key=lambda x: work[2]['kudos'] / (work[2]['hits'] + args['min_hits']), reverse=True)
 
 	# split works into pages
 	works = [works[i:i + args['works_per_page']] for i in range(0, len(works), args['works_per_page'])]
 
-	for current_page, page in track(enumerate(works), '', len(works)):
+	for current_page, page in track(enumerate(works), 'processing files:', len(works)):
 		# load template
 		with open(args['template'] + '.html', 'r', encoding='utf8') as f:
 			soup = BeautifulSoup(f, 'lxml')
@@ -76,7 +75,7 @@ def main():
 
 		# add works to page
 		for work in page:
-			soup.find('ol', class_='work index group').append(BeautifulSoup(work[-1], 'lxml'))
+			soup.find('ol', class_='work index group').append(BeautifulSoup(work[1], 'lxml'))
 
 		# save page
 		try:
