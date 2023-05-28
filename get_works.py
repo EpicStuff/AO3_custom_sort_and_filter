@@ -133,7 +133,7 @@ def main():
 		if args['pages_to_get'] > 0:
 			bars['pages'] = [progress.add_task('pages processed: ', total=args['pages_to_get'], ), 0]
 		elif not args['num_to_get'] > 0:
-			progress.add_task('processing: ')
+			progress.add_task('processing: ', total=None)
 		while not is_done(args):
 			write_ids_to_csv(args, get_ids(args, seen))
 			update_url_to_next_page(args)
