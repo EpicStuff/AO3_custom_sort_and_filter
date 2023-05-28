@@ -1,6 +1,8 @@
 def get_args(default_args, to_skip):
 	def format_response(response, type):
 		try:
+			# if response == ' ':
+			# 	return None
 			if type is int:
 				return int(response)
 			if type is float:
@@ -54,4 +56,4 @@ def load_csv(file, col=-1):
 				else:
 					lines.append(row[col])
 		return lines
-	return FileNotFoundError(f'file not found: {file}')
+	raise FileNotFoundError(f'file not found: {file}')

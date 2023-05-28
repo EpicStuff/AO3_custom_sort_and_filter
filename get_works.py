@@ -34,8 +34,8 @@ def update_url_to_next_page(args):
 		else:
 			args['url'] += "?page=2"
 def write_ids_to_csv(args, ids):
-	with open(args['file_out'] + ".csv", 'a', newline='', encoding='utf8') as csvfile:
-		writer = csv.writer(csvfile, delimiter=',')
+	with open(args['file_out'] + '.csv', 'a', newline='', encoding='utf8') as f:
+		writer = csv.writer(f, delimiter=',')
 		for id in ids:
 			if is_done(args): break
 			writer.writerow([val for key, val in id.items()])
@@ -100,7 +100,7 @@ def main():
 		'delay': 5.0,
 		'num_to_get': -1,
 		'pages_to_get': -1,
-		'file_in': 'work_ids',
+		'file_in': None,
 		'file_out': 'work_ids',
 		'header': '',
 		# 'oneshots(yes/no/only)': 'yes',
@@ -127,17 +127,29 @@ def main():
 		create_file(args['file_out'], list(args['to_get']))
 
 	with Progress() as progress:
+		bars = {}
 		if args['num_to_get'] > 0:
-			progress.add_task('processing: ', total=args['num_to_get'] // 20 + 1)
-		elif args['pages_to_get'] > 0:
-			progress.add_task('processing: ', total=args['pages_to_get'])
-		else:
+			bars['num'] = [progress.add_task('works gotten: ', total=args['num_to_get']), 0]
+		if args['pages_to_get'] > 0:
+			bars['pages'] = [progress.add_task('pages processed: ', total=args['pages_to_get'], ), 0]
+		elif not args['num_to_get'] > 0:
 			progress.add_task('processing: ')
 		while not is_done(args):
 			write_ids_to_csv(args, get_ids(args, seen))
 			update_url_to_next_page(args)
-			progress.update(0, advance=1)
-			time.sleep(args['delay'])
+
+			if 'num' in bars:
+				bars['num'][1] = args['num_gotten'] - progress.tasks[bars['num'][0]].completed
+			if 'pages' in bars:
+				bars['pages'][1] = args['pages_gotten'] - progress.tasks[bars['pages'][0]].completed
+
+			steps = 100
+			for i in range(steps):
+				if 'num' in bars:
+					progress.update(bars['num'][0], advance=bars['num'][1] / steps)
+				if 'pages' in bars:
+					progress.update(bars['pages'][0], advance=bars['pages'][1] / steps)
+				time.sleep(args['delay'] / steps)
 
 
 if __name__ == "__main__":
