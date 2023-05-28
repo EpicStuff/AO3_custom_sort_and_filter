@@ -3,7 +3,7 @@
 Based off of [AO3Scraper](https://github.com/radiolarian/AO3Scraper)
 
 Features:
-- Given a fandom or collection URL and amount of works you want, returns a list of the fic IDs and its html
+- Given a fandom, collection, or bookmarks URL, returns a list of the fic IDs and its html
 - Sorts list of works by whatever, optionally filter out works in another list (say your bookmarked works)
 - Exports works to html files
 
