@@ -34,7 +34,7 @@ def update_url_to_next_page(args):
 		else:
 			args['url'] += "?page=2"
 def write_ids_to_csv(args, ids):
-	with open(args['file'] + ".csv", 'a', newline='', encoding='utf8') as csvfile:
+	with open(args['out_file'] + ".csv", 'a', newline='', encoding='utf8') as csvfile:
 		writer = csv.writer(csvfile, delimiter=',')
 		for id in ids:
 			if not not_finished(args): break
@@ -93,7 +93,8 @@ def main():
 		'url': None,
 		'delay': 5.0,
 		'num_to_get': -1,
-		'file': 'work_ids',
+		'in_file': 'work_ids',
+		'out_file': 'work_ids',
 		'header': '',
 		# 'oneshots(yes/no/only)': 'yes',
 		'num_gotten': 0,
@@ -105,7 +106,7 @@ def main():
 	}
 	get_args(args, 3)
 	try:
-		seen = {*load_csv(args['file'], 0, True, list(args['to_get']))}
+		seen = {*load_csv(args['in_file'], 0, True, list(args['to_get']))}
 	except FileNotFoundError as e:
 		print(e)
 		seen = set()

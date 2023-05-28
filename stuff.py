@@ -1,22 +1,40 @@
 def get_args(default_args, to_skip):
-	# loop though all keys in args expect for last 2
-	for key in list(default_args)[:to_skip * -1]:
-		response = input(key + '=')
-		if response:
-			if default_args[key].__class__ is int:
-				try: default_args[key] = int(response)
-				except ValueError: print("error: should be int")
-			elif default_args[key].__class__ is float:
-				try: default_args[key] = float(response)
-				except ValueError: print("error: should be float")
-			elif key == 'oneshots(include/exclude/exclusive)':
-				if response in ('inc', '1', 'include', 'yes', 'y'): default_args[key] = 'yes'
-				elif response == ('2', 'exclude', 'no', 'n'): default_args[key] = 'no'
-				elif response == ('3', 'exclusive', 'only', 'o'): default_args[key] = 'only'
-				else: print("error: should be yes/no/only")
-			else:
-				default_args[key] = response
-	return default_args
+	def format_response(response, type):
+		try:
+			if type is int:
+				return int(response)
+			if type is float:
+				return float(response)
+			if key == 'oneshots(include/exclude/exclusive)':
+				if response in {'inc', '1', 'include', 'yes', 'y'}:
+					return 'yes'
+				elif response in {'2', 'exclude', 'no', 'n'}:
+					return 'no'
+				elif response in {'3', 'exclusive', 'only', 'o'}:
+					return 'only'
+				else:
+					print("error: should be yes/no/only")
+			return response
+		except ValueError:
+			print('error: should be', type)
+
+	while True:
+		args = default_args.copy()
+		try:
+			# loop though all keys in args expect for last `to_skip`
+			for key in list(args)[:to_skip * -1]:
+				if args[key].__class__ is dict:
+					for sub_key, sub_arg in args[key].items():
+						response = input(f'{key}.{sub_key}=')
+						if response:
+							args[key][sub_key] = format_response(response, sub_arg.__class__)
+				else:
+					response = input(key + '=')
+					if response:
+						args[key] = format_response(response, response.__class__)
+			return args
+		except KeyboardInterrupt:
+			print('\nrestarting...\n')
 def load_csv(file, col=-1, create=False, to_write=[]):
 	import os, csv
 	from rich.progress import track

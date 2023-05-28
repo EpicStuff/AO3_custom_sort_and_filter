@@ -12,14 +12,23 @@ def main():
 		'template': 'ao3_template',
 		'works_per_page': 20,
 		'works_to_skip': 'bookmarks',
-		'min_hits': 100,
-		'min_words': 2000,
+		'min':
+		{
+			'hits': 100,
+			'words': 2000,
+		},
 		'to_get':
 		{
 			'words': lambda soup: int(soup.find('dd', class_="words").text.replace(',', '')),
 			'kudos': lambda soup: int(soup.find('dd', class_="kudos").text),
 			'hits': lambda soup: int(soup.find('dd', class_="hits").text),
-		}
+		},
+		'sort':
+		{
+			'ratio': lambda work: work[2]['kudos'] / work[2]['hits'],
+			'ratio modified': lambda work: work[2]['kudos'] / (work[2]['hits'] + args['min_hits']),
+			'kudos': lambda work: work[2]['kudos'],
+		},
 	}
 	get_args(args, 1)
 
@@ -44,10 +53,8 @@ def main():
 	if args['min_words'] > 0:
 		works = [work for work in works if work[2]['words'] >= args['min_words']]
 
-	if args['sort_by'] == 'ratio':
-		works.sort(key=lambda work:  work[2]['kudos'] / work[2]['hits'], reverse=True)
-	elif args['sort_by'] == 'ratio modified':
-		works.sort(key=lambda x: work[2]['kudos'] / (work[2]['hits'] + args['min_hits']), reverse=True)
+	# sort works
+	works.sort(key=args['sort'][args['sort_by']], reverse=True)
 
 	# split works into pages
 	works = [works[i:i + args['works_per_page']] for i in range(0, len(works), args['works_per_page'])]
