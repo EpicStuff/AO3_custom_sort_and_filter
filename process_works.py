@@ -13,6 +13,7 @@ def main():
 		'works_per_page': 20,
 		'works_to_skip': 'bookmarks',
 		'min_hits': 100,
+		'min_words': 2000,
 		'to_get':
 		{
 			'words': lambda soup: int(soup.find('dd', class_="words").text.replace(',', '')),
@@ -40,6 +41,8 @@ def main():
 	# skip works with less that min_hits
 	if args['min_hits'] > 0:
 		works = [work for work in works if work[2]['hits'] >= args['min_hits']]
+	if args['min_words'] > 0:
+		works = [work for work in works if work[2]['words'] >= args['min_words']]
 
 	if args['sort_by'] == 'ratio':
 		works.sort(key=lambda work:  work[2]['kudos'] / work[2]['hits'], reverse=True)
