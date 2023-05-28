@@ -31,7 +31,7 @@ def get_args(default_args, to_skip):
 				else:
 					response = input(key + '=')
 					if response:
-						args[key] = format_response(response, response.__class__)
+						args[key] = format_response(response, args[key].__class__)
 			return args
 		except KeyboardInterrupt:
 			print('\nrestarting...\n')

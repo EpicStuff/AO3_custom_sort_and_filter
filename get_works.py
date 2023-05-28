@@ -104,7 +104,7 @@ def main():
 			'body': lambda w: str(w).replace('\n', '').replace('\r', '').replace('\t', '').replace('href="/', 'href="https://archiveofourown.org/')
 		}
 	}
-	get_args(args, 3)
+	args = get_args(args, 3)
 	try:
 		seen = {*load_csv(args['in_file'], 0, True, list(args['to_get']))}
 	except FileNotFoundError as e:
