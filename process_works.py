@@ -55,9 +55,9 @@ def main():
 
 	# skip works with less that min_hits
 	if args['min']['hits'] > 0:
-		works = [work for work in works if work[2]['hits'] >= args['min_hits']]
+		works = [work for work in works if work[2]['hits'] >= args['min']['hits']]
 	if args['min']['words'] > 0:
-		works = [work for work in works if work[2]['words'] >= args['min_words']]
+		works = [work for work in works if work[2]['words'] >= args['min']['words']]
 
 	# sort works
 	works.sort(key=args['sort'][args['sort_by']], reverse=True)
