@@ -47,7 +47,7 @@ def load_csv(file, col=-1):
 			reader = csv.reader(f, delimiter=',')
 			# get number of columns in csv
 			csv_len = len(next(reader))
-			for row in track(reader, 'loading file: ', sum(1 for line in open(file, 'rbU')) - 1):
+			for row in track(reader, 'loading file: ', sum(1 for line in open(file, 'rb')) - 1):
 				# if there are commas in the last column, join them
 				if len(row) > csv_len:
 					row = row[:csv_len - 1] + [','.join(row[csv_len - 1:])]

@@ -6,7 +6,7 @@ from stuff import *
 
 def main():
 	args = {
-		'in_file': 'work_ids',
+		'in_file': None,
 		'sort_by': 'ratio',
 		'min':
 		{
@@ -14,15 +14,15 @@ def main():
 			'words': 2000,
 		},
 		'out_file': None,
-		'works_to_skip': None,
+		'works_to_skip': 'bookmarks',
 		'out_folder': 'outputs/',
 		'works_per_page': 20,
 		'template': 'ao3_template',
 		'to_get':
 		{
 			'words': lambda soup: int(soup.find('dd', class_="words").text.replace(',', '')),
-			'kudos': lambda soup: int(soup.find('dd', class_="kudos").text),
-			'hits': lambda soup: int(soup.find('dd', class_="hits").text),
+			'kudos': lambda soup: int(soup.find('dd', class_="kudos").text.replace(',', '')),
+			'hits': lambda soup: int(soup.find('dd', class_="hits").text.replace(',', '')),
 		},
 		'sort':
 		{
@@ -66,7 +66,7 @@ def main():
 	works = [works[i:i + args['works_per_page']] for i in range(0, len(works), args['works_per_page'])]
 
 	if args['out_folder']:
-		os.makedirs(args["out_file"], exist_ok=True)
+		os.makedirs(args["out_folder"], exist_ok=True)
 		args['out_file'] = args['out_folder'] + args['out_file']
 	for current_page, page in track(enumerate(works), 'processing files:', len(works)):
 		# load template

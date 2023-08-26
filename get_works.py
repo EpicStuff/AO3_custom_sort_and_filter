@@ -43,12 +43,11 @@ def write_ids_to_csv(args, ids):
 	args['pages_gotten'] += 1
 def get_ids(args, seen_ids):
 	# make the request. if we 429, try again later
-	headers = {'user-agent': args['header']}
-	req = requests.get(args['url'], headers=headers)
+	req = requests.get(args['url'])
 	while req.status_code == 429:
 		# >5 second delay between requests as per AO3's terms of service
 		time.sleep(max(args['delay'], 5))
-		req = requests.get(args['url'], headers=headers)
+		req = requests.get(args['url'])
 		print("Request answered with Status-Code 429, retrying...")
 
 	soup = BeautifulSoup(req.text, "lxml")
@@ -61,12 +60,13 @@ def get_ids(args, seen_ids):
 	# process list for new fic ids
 	ids = []
 	for work in works:
-		# if args['oneshots(yes/no/only)'] == 'no' and work.find('dd', class_="chapters").text == '1/1': continue
-		# if args['oneshots(yes/no/only)'] == 'only' and work.find('dd', class_="chapters").text != '1/1': continue
 		# if args['to_get']['id'](work) in seen_ids: continue
 		work = {key: func(work) for key, func in args['to_get'].items()}
 		if work['id'] not in seen_ids:
-			ids.append(work)
+			if args['id_only']:
+				ids.append({'id': work['id']})
+			else:
+				ids.append(work)
 			seen_ids.add(ids[-1]['id'])
 	return ids
 def is_done(args):
@@ -77,18 +77,6 @@ def is_done(args):
 	if args['pages_to_get'] > 0 and args['pages_gotten'] >= args['pages_to_get']:
 		return True
 	return False
-def load_existing_ids(args, ids=set()):
-	if (os.path.exists(args['file_name'] + '.csv')) and os.stat(args['file_name'] + '.csv').st_size:
-		with open(args['file_name'] + ".csv", 'r', encoding='utf8') as f:
-			reader = csv.reader(f)
-			for row in track(reader, 'loading file: ', sum(1 for line in open(args['file_name'] + '.csv', 'rbU'))):
-				ids.add(row[0])
-	else:
-		print("no existing file; creating new file...\n")
-		with open(args['file_name'] + '.csv', 'w', newline='', encoding='utf8') as f:
-			writer = csv.writer(f, delimiter=',')
-			writer.writerow(list(args['to_get']))
-	return ids
 def create_file(file, to_write):
 	print("no existing file; creating new file...\n")
 	with open(file + '.csv', 'w', newline='', encoding='utf8') as f:
@@ -97,13 +85,14 @@ def create_file(file, to_write):
 def main():
 	args = {
 		'url': None,
-		'delay': 5.0,
-		'num_to_get': -1,
-		'pages_to_get': -1,
-		'file_in': None,
-		'file_out': 'work_ids',
-		'header': '',
-		# 'oneshots(yes/no/only)': 'yes',
+		'num_to_get': -1,  # defaults to all
+		'pages_to_get': -1,  # defaults to all
+		'file_out': None,
+		'file_skip': 'bookmarks',
+		'file_in': None,  # defaults to file_out
+		'delay': 1.0,
+		'id_only': False,
+		###############
 		'num_gotten': 0,
 		'pages_gotten': 0,
 		'is_page_empty': False,
@@ -114,16 +103,19 @@ def main():
 	}
 	# get user args
 	args = get_args(args, 4)
+	if args['file_in'] is None:
+		args['file_in'] = args['file_out']
 	# load existing ids
 	try:
 		seen = {*load_csv(args['file_in'], 0)}
-	except FileNotFoundError as e:
-		print(e)
+	except (FileNotFoundError, TypeError) as e:
+		if type(e) is FileNotFoundError: print(e)
 		seen = set()
-		if args['file_in'] == args['file_out']:
-			create_file(args['file_out'], list(args['to_get']))
+	# load existing ids from skip file
+	if args['file_skip']:
+		seen.update(load_csv(args['file_skip'], 0))
 	# create file if necessary
-	if args['file_in'] != args['file_out']:
+	if not os.path.exists(args['file_out'] + '.csv') or not os.stat(args['file_out'] + '.csv').st_size:
 		create_file(args['file_out'], list(args['to_get']))
 
 	with Progress() as progress:
