@@ -48,11 +48,16 @@ def main():
 			print('skipping skipping:', e)
 
 	# extract data
-	for work in track(works, 'processing works:', len(works)):
+	for work in track(works.copy(), 'processing works:', len(works)):
 		work.append({})
+		soup = BeautifulSoup(work[1], 'lxml')
+		try: args['to_get']['kudos'](soup)  # if works does not have kudos (is probably a series)
+		except AttributeError: continue  # skip work
 		for key, func in args['to_get'].items():
-			work[2][key] = func(BeautifulSoup(work[1], 'lxml'))
+			work[2][key] = func(soup)
 
+	# skip works with no stats
+	works = [work for work in works if work[2] != {}]
 	# skip works with less that min_hits
 	if args['min']['hits'] > 0:
 		works = [work for work in works if work[2]['hits'] >= args['min']['hits']]
