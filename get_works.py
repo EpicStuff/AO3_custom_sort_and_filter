@@ -61,7 +61,11 @@ def get_ids(args, seen_ids):
 	ids = []
 	for work in works:
 		# if args['to_get']['id'](work) in seen_ids: continue
-		work = {key: func(work) for key, func in args['to_get'].items()}
+		try:
+			work = {key: func(work) for key, func in args['to_get'].items()}
+		except AttributeError:  # made for if bookmarked wark has been deleted
+			assert work.find('p', class_="message").contents[0] == 'This has been deleted, sorry!'  # making sure its not some other problem
+			continue
 		if work['id'] not in seen_ids:
 			if args['id_only']:
 				ids.append({'id': work['id']})
@@ -109,10 +113,13 @@ def main():
 	try:
 		seen = {*load_csv(args['file_in'], 0)}
 	except (FileNotFoundError, TypeError) as e:
-		if type(e) is FileNotFoundError: print(e)
+		if type(e) is FileNotFoundError:
+			print(e)
+			if args['file_in'] in ('0', 'None'):  # create new file out if specified
+				create_file(args['file_out'], list(args['to_get']))
 		seen = set()
 	# load existing ids from skip file
-	if args['file_skip']:
+	if args['file_skip'] not in ('None', '0'):
 		seen.update(load_csv(args['file_skip'], 0))
 	# create file if necessary
 	if not os.path.exists(args['file_out'] + '.csv') or not os.stat(args['file_out'] + '.csv').st_size:
