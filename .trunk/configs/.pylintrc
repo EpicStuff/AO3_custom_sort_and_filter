@@ -1,0 +1,45 @@
+[MAIN]
+py-version=3.13
+
+[FORMAT]
+indent-string="\t"
+
+[MESSAGES CONTROL]
+disable=
+	C0103,
+	C0104,
+	C0114,
+	C0115,
+	C0116,
+	C0301,
+	C0321,
+	C0410,
+	C0415,
+	C2801,
+	E0102,
+	E0211,  # covered by pylance
+	E0401,
+	E0602,  # covered by ruff
+	R0902,
+	R0903,
+	R0913,
+	R0917,
+	R1732,
+	W0102,
+	W0122,  # covered by ruff
+	W0123,  # covered by ruff
+	W0124,
+	W0212,
+	W0221,
+	W0222,
+	W0511,  # covered by ruff
+	W0603,
+	W0611,  # covered by ruff
+	W0613,  # covered by ruff
+	W0622,  # covered by ruff
+	W0718,  # covered by ruff
+	W0719,  # technically covered by ruff
+	R0912,  # covered by ruff
+	R0915,  # covered by ruff
+	W1510,  # technically covered by ruff
+	W2301,  # covered by ruff

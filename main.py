@@ -1,17 +1,16 @@
+from pathlib import Path
+
 from flask import Flask, render_template
-import os
 
 app = Flask(__name__, template_folder='outputs', static_folder='outputs/ao3_template')
 
-@app.route("/")
-def main():
+@app.route('/')
+def main() -> str:
 	html = ''
-	files = os.listdir('outputs')
-	files.sort()
-	for file in files:
-		if file.endswith('.html'):
+	files = Path('outputs').iterdir()
+	for file in sorted(files):
+		if file.suffix == '.html':
 			html += f'<a href="{file}">{file}</a><br>'
-	# return render_template('alex_rider_1.html')
 	return html
 
 
@@ -21,4 +20,4 @@ def page(file):
 	return render_template(file)
 
 
-app.run(host='0.0.0.0')
+app.run(host='127.0.0.1')

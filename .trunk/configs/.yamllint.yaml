@@ -1,0 +1,12 @@
+rules:
+  indentation:
+    spaces: 2
+  key-duplicates: {}
+  # key-ordering: {}
+  octal-values:
+    forbid-implicit-octal: true
+  quoted-strings:
+    extra-allowed:
+      - '{|}'
+    quote-type: single
+    required: only-when-needed

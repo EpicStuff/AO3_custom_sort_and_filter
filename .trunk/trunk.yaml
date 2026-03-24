@@ -1,0 +1,62 @@
+# This file controls the behavior of Trunk: https://docs.trunk.io/cli
+# To learn more about the format of this file, see https://docs.trunk.io/reference/trunk-yaml
+version: 0.1
+cli:
+  version: 1.25.0
+# Trunk provides extensibility via plugins. (https://docs.trunk.io/plugins)
+plugins:
+  sources:
+    - id: trunk
+      ref: v1.7.4
+      uri: https://github.com/trunk-io/plugins
+# Many linters and tools depend on runtimes - configure them here. (https://docs.trunk.io/runtimes)
+runtimes:
+  enabled:
+    - node@22.16.0
+    - python@>=3.13.0
+  definitions:
+    - type: python
+      system_version: allowed
+# This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
+lint:
+  disabled:
+    - git-diff-check
+    - black
+    - checkov
+    - markdownlint
+  enabled:
+    # - actionlint@1.7.7
+    - codespell@2.4.1
+    - remark-lint@12.0.1
+    - markdown-table-prettify@3.7.0
+    - markdownlint-cli2@0.21.0
+    - autopep8@2.3.2
+    - bandit@1.9.3
+    # - checkov@3.2.473
+    - isort@8.0.0
+    - osv-scanner@2.3.3
+    - oxipng@10.1.0
+    - prettier@3.8.1
+    - pylint@4.0.5
+    - ruff@0.15.2
+    - shellcheck@0.11.0
+    # - shfmt@3.6.0
+    - taplo@0.10.0
+    # - trufflehog@3.92.5
+    - yamllint@1.38.0
+  ignore:
+    - linters: [ALL]
+      paths:
+        - tests/**
+actions:
+  disabled:
+    - git-lfs
+    - trunk-fmt-pre-commit
+  enabled:
+    # - trunk-fmt-pre-commit
+    - commitizen
+    # - commitlint
+    # - trufflehog-pre-commit
+    - trunk-announce
+    - trunk-check-pre-push
+    - trunk-upgrade-available

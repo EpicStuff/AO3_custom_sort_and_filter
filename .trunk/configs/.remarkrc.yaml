@@ -1,0 +1,5 @@
+plugins:
+  - remark-preset-lint-recommended
+  - remark-preset-lint-consistent
+  # - remark-lint-no-undefined-references
+  # - remark-lint-no-reference-like-url
