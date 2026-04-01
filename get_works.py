@@ -3,7 +3,7 @@
 Save fic ids (and optionally html) from AO3 to a csv file.
 
 Usage:
-	get_works [options] <url>
+	get_works [options] <url> <output>
 	get_works -h, --help
 	get_works --version
 
@@ -11,7 +11,6 @@ Options:
 	-h, --help                  Show this.
 	--version                   Show version.
 
-	-o, --output <output>       File to save works to.
 	-i, --input [<input>]       File to merge new works with.
 	-I                          Use same input file as output file. Do not use -i with this flag.
 
@@ -23,19 +22,21 @@ Options:
 	--id-only                   Only save the id of each work, not the html.
 '''
 import csv, time
-from pathlib import Path
 from functools import cache
+from pathlib import Path
 
 import requests
 from bs4 import BeautifulSoup
+from cachedisk import CacheDisk
 from docopt import docopt
-from epicstuff import Dict, Bar
+from epicstuff import Bar, Dict
 from rich.progress import TextColumn
 from stuff import load_csv
 
 
 @cache
-def get_request(url: str) -> requests.Response:
+#@CacheDisk.sync_disk_cache()  # for testing
+def get_request(url: str, _: int = 0) -> requests.Response:
 	return requests.get(url, timeout=60)
 
 def update_url_to_next_page(args: Dict) -> None:
@@ -71,13 +72,12 @@ def write_ids_to_csv(args: Dict, stuff: Dict, ids: list[dict]) -> None:
 			writer.writerow([val for _, val in id_.items()])
 			stuff.works_gotten += 1
 	stuff.pages_gotten += 1
-def get_ids(args: Dict, stuff: Dict, seen_ids: set[str]) -> list[dict]:
-	# make the request. if we 429, try again later
-	req = get_request(args.url)
-	while req.status_code == 429:
-		time.sleep(args.delay)
-		req = requests.get(args.url)
-		print('Request answered with Status-Code 429, retrying...')
+def get_ids(args: Dict, stuff: Dict, seen_ids: set[str], _: int = 0) -> list[dict] | requests.Response:
+	# make the request. if request not ok, return
+	# the _ to get around cache if first request fails
+	req = get_request(args.url, _)
+	if not req.ok:
+		return req
 
 	soup = BeautifulSoup(req.text, 'lxml')
 
@@ -112,7 +112,7 @@ def create_file(file: Path, to_write: list[str]) -> None:
 	with file.open('w', newline='', encoding='utf8') as f:
 		writer = csv.writer(f, delimiter=',')
 		writer.writerow(to_write)
-def main() -> None:  # noqa: C901, PLR0912
+def main() -> None:  # noqa: C901, PLR0912, PLR0915
 	stuff = Dict({
 		'works_gotten': 0,
 		'pages_gotten': 0,
@@ -181,28 +181,46 @@ def main() -> None:  # noqa: C901, PLR0912
 		next(main_bar)
 
 		# loop until reached specified number of pages/works or all works have been gotten
+		failed = 0
 		while True:
 			# actual scraping
-			request_bar = bar2(range(1), 'Requesting page', None, True)
+			request_bar = bar2(range(1), 'Requesting', None, True)
 			next(request_bar)
-			write_ids_to_csv(args, stuff, get_ids(args, stuff, seen))
-			update_url_to_next_page(args)
+			ids = get_ids(args, stuff, seen, failed)
 			next(request_bar, None)
-
-			# more progress bar stuff
-			if limit == 'pages':
-				next(main_bar, None)
+			# if request is not ok
+			if isinstance(ids, requests.Response):
+				# if its please wait error, wait then try again
+				if ids.status_code == 429:
+					print('Request answered with Status-Code 429, retrying...', 'failed:', failed)
+					failed = failed + 1 if failed >= 0 else failed - 1  # the whole logic with +/- 1 is a bit iffy but i think i makes sense
+				# if its 2nd time fail, exit
+				elif failed == -1:
+					ids.raise_for_status()
+				# else, its some other error, try again later, but only once
+				else:
+					print(f'Request failed with Status-Code {ids.status_code}, retrying...', 'failed:', failed)
+					failed = -1
+			# else, request is ok
 			else:
-				Bar1.progress.update(Bar1.tasks[0], completed=stuff.works_gotten) # pyright: ignore[reportOptionalMemberAccess]
+				failed = 0
 
-			if is_done(args, stuff):
-				break
-			# else:
+				write_ids_to_csv(args, stuff, ids)
+				update_url_to_next_page(args)
+
+				# more progress bar stuff
+				if limit == 'pages':
+					next(main_bar, None)
+				else:
+					Bar1.progress.update(Bar1.tasks[0], completed=stuff.works_gotten)  # pyright: ignore[reportOptionalMemberAccess]
+
+				if is_done(args, stuff):
+					break
+
+			# sleep between requests
 			steps = 100
 			for _ in bar2(range(steps), 'Sleeping', transient=True):
 				time.sleep(args.delay / steps)
-
-		#next(main_bar, None)
 
 
 if __name__ == '__main__':

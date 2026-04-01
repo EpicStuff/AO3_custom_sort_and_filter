@@ -2,6 +2,7 @@ from pathlib import Path
 
 from flask import Flask, render_template
 
+
 app = Flask(__name__, template_folder='outputs', static_folder='outputs/ao3_template')
 
 @app.route('/')
@@ -10,7 +11,7 @@ def main() -> str:
 	files = Path('outputs').iterdir()
 	for file in sorted(files):
 		if file.suffix == '.html':
-			html += f'<a href="{file}">{file}</a><br>'
+			html += f'<a href="{file.name}">{file.name}</a><br>'
 	return html
 
 
